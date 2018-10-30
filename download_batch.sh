@@ -37,17 +37,21 @@ function exitOnFail() {
 
 while IFS= read -r SRC_REPO_URL; do
  (echo >&2 "=== Processing repo: $SRC_REPO_URL");
-  
-  REPO_NAME='';
-  if [[ "$SRC_REPO_URL" =~ /(.+)\.git ]]; then
-    REPO_NAME="${BASH_REMATCH[1]}";
-  else
-    (echo >&2 "=== Can't find repository name in the URL: $SRC_REPO_URL");
+
+  REPO_PATH='';
+  if [[ "$SRC_REPO_URL" =~ https?://(.+)\.git ]]; then
+    REPO_PATH="${BASH_REMATCH[1]}";
+  elif [[ "$SRC_REPO_URL" =~ git@(.*?):(.+)\.git ]]; then
+    REPO_PATH="${BASH_REMATCH[1]}/${BASH_REMATCH[2]}";
+  fi
+
+  if [ -z "$REPO_PATH" ]; then
+    (echo >&2 "=== Can't find repository in the URL: $REPO_PATH");
     exit 2;
   fi
-  
-  DST_PATH_CUR="$DST_PATH/$REPO_NAME";
-  
+
+  DST_PATH_CUR="$DST_PATH/$REPO_PATH";
+
   if [ -d "$DST_PATH_CUR" ]; then
     (echo >&2 "=== updating...");
     git -C "$DST_PATH_CUR" pull;
@@ -55,7 +59,7 @@ while IFS= read -r SRC_REPO_URL; do
     (echo >&2 "=== cloning...");
     git clone "$SRC_REPO_URL" "$DST_PATH_CUR";
   fi
-  
+
   # submodules and other dependencies can be downloaded here
 
   exitOnFail $? "=== Something went wrong with \"$SRC_REPO_URL\". Interrupted.";
